@@ -1,25 +1,23 @@
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
-pub struct TemplateApp {
+pub struct TerminalApp {
     // Example stuff:
-    label: String,
-
-    #[serde(skip)] // This how you opt-out of serialization of a field
-    value: f32,
+    terminalBuffer: String,
+    screenContent: String
 }
 
-impl Default for TemplateApp {
+impl Default for TerminalApp {
     fn default() -> Self {
         Self {
             // Example stuff:
-            label: "Hello World!".to_owned(),
-            value: 2.7,
+            terminalBuffer: "".to_owned(),
+            screenContent: "".to_owned()
         }
     }
 }
 
-impl TemplateApp {
+impl TerminalApp {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
@@ -35,7 +33,7 @@ impl TemplateApp {
     }
 }
 
-impl eframe::App for TemplateApp {
+impl eframe::App for TerminalApp {
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
@@ -46,10 +44,19 @@ impl eframe::App for TemplateApp {
         // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
         // For inspiration and more examples, go to https://emilk.github.io/egui
 
+        egui::SidePanel::left("left panel").show(ctx, |ui| {
+
+        });
+
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+
+
             // The top panel is often a good place for a menu bar:
 
             egui::menu::bar(ui, |ui| {
+
+                egui::widgets::global_theme_preference_switch(ui);
+
                 // NOTE: no File->Quit on web pages!
                 let is_web = cfg!(target_arch = "wasm32");
                 if !is_web {
@@ -58,38 +65,29 @@ impl eframe::App for TemplateApp {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                         }
                     });
-                    ui.add_space(16.0);
+                    ui.add_space(160.0);
                 }
-
-                egui::widgets::global_theme_preference_buttons(ui);
             });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            // The central panel the region left after adding TopPanel's and SidePanel's
-            ui.heading("eframe template");
+        egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
 
-            ui.horizontal(|ui| {
-                ui.label("Write something: ");
-                ui.text_edit_singleline(&mut self.label);
-            });
+            let term_text_edit = ui.text_edit_singleline(&mut self.terminalBuffer);
+            let term_text_id = term_text_edit.id;
+            
+            if term_text_edit.lost_focus() {
+                //usage of and clearing of term content
+                self.screenContent = self.terminalBuffer.clone();
+                self.terminalBuffer.clear();
 
-            ui.add(egui::Slider::new(&mut self.value, 0.0..=10.0).text("value"));
-            if ui.button("Increment").clicked() {
-                self.value += 1.0;
+                //returning focus
+                ui.ctx().memory_mut(|mem| mem.request_focus(term_text_id));
             }
+        });
+        
+        egui::CentralPanel::default().show(ctx, |ui| {
 
-            ui.separator();
-
-            ui.add(egui::github_link_file!(
-                "https://github.com/emilk/eframe_template/blob/main/",
-                "Source code."
-            ));
-
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                powered_by_egui_and_eframe(ui);
-                egui::warn_if_debug_build(ui);
-            });
+            ui.label(self.screenContent.clone());
         });
     }
 }
